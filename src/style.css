@@ -118,6 +118,7 @@ textarea {
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(236, 107, 45, 0.12), rgba(15, 118, 110, 0.12));
   filter: blur(8px);
+  pointer-events: none;
 }
 
 .hero-section {
