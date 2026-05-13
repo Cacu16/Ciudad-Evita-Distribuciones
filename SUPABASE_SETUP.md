@@ -1,72 +1,114 @@
-# Supabase Setup
+# Supabase + Netlify Setup
 
 ## 1. Crear el proyecto
 
-1. Entra a Supabase y crea un proyecto nuevo.
+1. Crea un proyecto nuevo en Supabase.
 2. Espera a que termine la provision.
 
-## 2. Crear tablas y politicas
+## 2. Ejecutar el esquema
 
-1. Abre el SQL Editor.
-2. Copia el contenido de `supabase/schema.sql`.
+1. Abre `SQL Editor`.
+2. Copia todo el archivo `supabase/schema.sql`.
 3. Ejecutalo completo.
 
-Esto crea:
+Ese script:
 
-- `public.products`
-- `public.site_config`
-- Politicas RLS
-- Datos iniciales
-- Realtime para productos y configuracion
+- crea o ajusta `products`, `site_config` y `profiles`
+- activa RLS
+- agrega realtime para catalogo y configuracion
+- prepara roles `ADMIN` y `USER`
+- deja un trigger para crear perfiles cuando se registran usuarios
 
 ## 3. Crear el usuario administrador
 
 1. Ve a `Authentication` > `Users`.
-2. Crea un usuario con email y contrasena.
-3. Ese usuario sera el que use el panel admin de la web.
+2. Crea el usuario con email y contrasena.
+3. Luego abre `Table Editor` > `profiles`.
+4. Busca ese email y cambia el campo `role` a `ADMIN`.
 
-## 4. Configurar variables locales
+Tambien puedes hacerlo por SQL:
 
-1. Crea un archivo `.env.local` en la raiz del proyecto.
-2. Copia el formato de `.env.example`.
-3. Completa:
+```sql
+update public.profiles
+set role = 'ADMIN'
+where email = 'tu-admin@dominio.com';
+```
+
+## 4. Variables locales
+
+Crea `.env.local` en la raiz del proyecto con este formato:
 
 ```env
 VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_ANON_KEY=tu_anon_key_publica
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu_anon_key_publica
+SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_privada
+APP_JWT_SECRET=una_clave_larga_y_segura_para_firmar_jwt
 ```
 
+Notas:
+
+- `VITE_...` se usa en el frontend para catalogo publico y realtime.
+- `SUPABASE_SERVICE_ROLE_KEY` se usa solo en Netlify Functions.
+- `APP_JWT_SECRET` firma el JWT propio del panel admin.
+- No subas `.env.local` a GitHub.
+
 ## 5. Probar localmente
+
+El catalogo publico funciona con:
 
 ```bash
 npm run dev
 ```
 
-## 6. Importar catalogo local anterior
+Para probar los endpoints protegidos en local, lo ideal es usar `netlify dev`.
+Si no lo usas, el modo desarrollo igual puede apoyarse en Supabase directo para no frenarte mientras diseñas el panel.
 
-Si ya cargaste productos en la version vieja:
+## 6. Migrar catalogo viejo del navegador
 
-1. Abre la web en el mismo navegador donde los cargaste.
-2. Revela el panel admin.
-3. Inicia sesion.
-4. Usa `Importar datos locales a Supabase`.
+Si en una compu todavia tienes productos guardados localmente de la version anterior:
 
-## 7. Configurar Netlify
+1. Entra al dashboard en esa misma compu.
+2. Inicia sesion como admin.
+3. Busca la tarjeta `Sincronizacion y migracion`.
+4. Toca `Subir este catalogo a Supabase`.
 
-En Netlify agrega las mismas variables:
+Eso publica ese catalogo para todos los dispositivos.
+
+## 7. Variables en Netlify
+
+En `Project configuration` > `Environment variables`, agrega:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `APP_JWT_SECRET`
 
-Luego vuelve a desplegar el sitio.
+Luego dispara un redeploy.
 
-## 8. Como entra el admin
+## 8. Acceso administrador
 
-1. Toca 5 veces el nombre del negocio en la cabecera.
-2. Se muestra el acceso admin.
-3. Ingresa con el email y la contrasena del usuario creado en Supabase Auth.
+La tienda publica queda en `#/`.
 
-## Nota sobre imagenes
+El panel admin entra por:
 
-Las fotos siguen guardandose dentro de la base como texto para mantener esta version simple.
-Por eso conviene usar imagenes chicas. La app limita la carga a menos de 700 KB por foto.
+```text
+#/admin
+```
+
+Flujo:
+
+1. Abrir `https://tu-sitio.netlify.app/#/admin`
+2. Iniciar sesion con el usuario admin
+3. El backend valida credenciales, rol y devuelve JWT
+4. El dashboard usa ese JWT para acciones protegidas
+
+## 9. Imagenes
+
+Las imagenes siguen guardandose como texto base64 para mantener esta version simple y desplegable sin storage extra.
+La app limita cada foto a menos de `700 KB`.
+
+Si mas adelante quieres una version mas escalable, el siguiente paso natural es mover imagenes a Supabase Storage.
